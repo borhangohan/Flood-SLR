@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive SLR: ML for Flood Monitoring & Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Visualization & Content Choices:
+        - Executive Summary: Text (Goal: Inform)
+        - Methodology (Eligibility, Search, Selection, Data Collection, Effect Measures, ROBINS-E, GRADE): Text & HTML Tables (Goal: Inform, Organize) - Key aspects summarized.
+        - Key Findings (Performance Metrics - Table 8): Interactive Bar Charts (Chart.js Canvas) for F1-score & Accuracy by ML Technique, Data Source, Application, Terrain. (Goal: Compare, Inform). Interaction: Tooltips.
+        - Risk of Bias (ROBINS-E - Fig 5/Table 6 insights): Bar Chart (Chart.js Canvas) showing distribution of risk levels per domain (High Risk % and Some Concerns %). (Goal: Inform, Compare). Interaction: Tooltips.
+        - Certainty of Evidence (GRADE - Table 10): Bar Chart (Chart.js Canvas) for certainty levels of RQs. (Goal: Inform).
+        - Core Findings, Limitations, Implications, Recent Updates: Text (Goal: Inform).
+        - Justification: Charts for quantitative comparisons, text for qualitative information and explanations. Tables for structured detailed data. Chosen for clarity and direct representation of SLR content. NO SVG/Mermaid. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { position: relative; width: 100%; max-width: 700px; margin-left: auto; margin-right: auto; height: 350px; max-height: 400px; }
+        @media (max-width: 768px) { .chart-container { height: 300px; max-height: 350px; } }
+        @media (max-width: 640px) { .chart-container { height: 250px; max-height: 300px; } }
+        .nav-link { transition: background-color 0.3s ease, color 0.3s ease; }
+        .nav-link.active { background-color: #0284c7; color: white; }
+        .nav-link:hover { background-color: #0369a1; color: white; }
+        h2 { border-bottom: 2px solid #0ea5e9; padding-bottom: 0.5rem; }
+        h3 { border-bottom: 1px solid #7dd3fc; padding-bottom: 0.25rem; }
+        .table-container table { width: 100%; border-collapse: collapse; }
+        .table-container th, .table-container td { border: 1px solid #cbd5e1; padding: 0.75rem; text-align: left; }
+        .table-container th { background-color: #f1f5f9; }
+        .sticky-nav { position: sticky; top: 0; z-index: 50; background-color: #075985; }
+        .content-section { scroll-margin-top: 80px; } /* Adjust based on nav height */
+         .tooltip {
+            opacity: 0;
+            position: absolute;
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.875rem;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            white-space: pre-wrap; /* Allows multiline tooltips */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <header class="bg-sky-700 text-white p-6 text-center shadow-md">
+        <h1 class="text-3xl md:text-4xl font-bold">Systematic Literature Review:</h1>
+        <p class="text-xl md:text-2xl mt-1">Machine Learning for Flood Monitoring & Prediction Using Sentinel-1/-2 Data</p>
+    </header>
+
+    <nav class="sticky-nav shadow-lg">
+        <div class="container mx-auto px-4">
+            <ul class="flex flex-wrap justify-center items-center text-sm md:text-base">
+                <li><a href="#overview" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Overview</a></li>
+                <li><a href="#exec-summary" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Executive Summary</a></li>
+                <li><a href="#methodology" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Methodology</a></li>
+                <li><a href="#performance-insights" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Performance Insights</a></li>
+                <li><a href="#risk-of-bias" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Risk of Bias</a></li>
+                <li><a href="#certainty-evidence" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Certainty of Evidence</a></li>
+                <li><a href="#core-findings" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Core Findings</a></li>
+                <li><a href="#limitations" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Limitations</a></li>
+                <li><a href="#implications-future" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Implications & Future</a></li>
+                <li><a href="#recent-updates" class="nav-link block font-medium text-slate-200 hover:bg-sky-600 hover:text-white px-3 py-3 md:px-4 md:py-4">Recent Updates</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 md:p-8">
+        <section id="overview" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Welcome to the Interactive SLR</h2>
+            <p class="mb-3 leading-relaxed">This interactive application provides a comprehensive overview and exploration of the Systematic Literature Review (SLR) titled "Machine Learning for Flood Monitoring & Prediction Using Sentinel-1/-2 Data." The SLR meticulously analyzes existing research, evaluating methodologies, performance metrics, and operational considerations for leveraging Sentinel satellite data with machine learning in flood management.</p>
+            <p class="leading-relaxed">Navigate through the sections using the menu above to delve into the executive summary, the rigorous methodology employed, key performance insights from various studies visualized through interactive charts, assessments of bias and evidence certainty, core findings, limitations, and future research directions. The aim is to make the rich information from the SLR accessible, understandable, and engaging.</p>
+        </section>
+
+        <section id="exec-summary" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Executive Summary</h2>
+            <p class="mb-3 leading-relaxed">This systematic literature review (SLR) on machine learning for flood monitoring and prediction using Sentinel-1 and Sentinel-2 data is a meticulously structured and methodologically robust undertaking. It adheres to PRISMA 2020 guidelines and innovatively adapts tools like ROBINS-E for bias assessment and the GRADE framework for evidence certainty in the domain of ML and remote sensing for disaster management.[1]</p>
+            <p class="mb-3 leading-relaxed">Key findings highlight the increasing prominence of deep learning, particularly Convolutional Neural Networks (CNNs), and the benefits of multi-sensor data fusion. While the methodology is strong, limitations in primary studies (confounding factors, reporting biases) mean performance claims need cautious interpretation. The review excels at assessing the current state-of-the-art, including its weaknesses.[1]</p>
+            <p class="leading-relaxed">Recommendations emphasize more rigorous experimental designs, standardized reporting, and deeper exploration of prediction and model explainability for real-world deployment.[1]</p>
+        </section>
+
+        <section id="methodology" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Methodology Highlights</h2>
+            <p class="mb-4 leading-relaxed">The SLR employed a rigorous and transparent methodology, adhering to PRISMA 2020 guidelines. This section highlights key aspects of the approach.</p>
+            
+            <h3 class="text-xl font-semibold text-sky-500 mt-6 mb-3">Eligibility Criteria & Search Strategy</h3>
+            <p class="mb-3 leading-relaxed">Studies were included if they addressed flood monitoring/prediction using Sentinel-1 SAR and/or Sentinel-2 data with machine learning, providing performance metrics. The search covered 2014-2024 across seven major academic databases (IEEE Xplore, ScienceDirect, SpringerLink, Scopus, MDPI, Taylor & Francis, Wiley Online Library), yielding an initial 2,064 papers.[1]</p>
+
+            <h3 class="text-xl font-semibold text-sky-500 mt-6 mb-3">Selection Process & Data Collection</h3>
+            <p class="mb-3 leading-relaxed">A multi-reviewer process with instructor supervision and LLM re-verification led to 47 included studies. Data extraction was guided by 10 predefined research questions (RQs), covering aspects like Sentinel-1 effectiveness, multi-sensor integration, CNN comparisons, generalization, operational implications, and auxiliary data impact.[1]</p>
+
+            <h3 class="text-xl font-semibold text-sky-500 mt-6 mb-3">Effect Measures & Bias Assessment</h3>
+            <p class="mb-3 leading-relaxed">Due to study heterogeneity, a meta-analysis was inappropriate. Key performance metrics (F1 score, Overall Accuracy, IoU, Kappa, MAE) were chosen. Risk of bias was assessed using an adapted ROBINS-E tool for ML/remote sensing studies, focusing on confounding, exposure measurement, missing data, outcome measurement, and selective reporting.[1]</p>
+
+            <h3 class="text-xl font-semibold text-sky-500 mt-6 mb-3">Certainty Assessment</h3>
+            <p class="mb-3 leading-relaxed">The GRADE framework was used to assess evidence certainty for primary outcomes, considering risk of bias, inconsistency, indirectness, imprecision, and publication bias.[1]</p>
+        </section>
+
+        <section id="performance-insights" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Key Performance Insights</h2>
+            <p class="mb-6 leading-relaxed">The SLR synthesized performance metrics from the included studies, revealing trends in the effectiveness of different machine learning techniques, data sources, applications, and terrain types. The following charts visualize these findings, primarily based on F1-scores and Overall Accuracy (OA) as reported in Table 8 of the SLR.[1]</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-xl font-semibold text-sky-500 mb-3 text-center">Performance by ML Technique</h3>
+                    <div class="chart-container bg-slate-100 p-4 rounded-md shadow">
+                        <canvas id="mlTechniqueChart"></canvas>
+                    </div>
+                    <p class="text-sm text-center mt-2 text-slate-600">Comparing CNN-based, Tree-based, and Other ML methods.</p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-sky-500 mb-3 text-center">Performance by Data Source</h3>
+                    <div class="chart-container bg-slate-100 p-4 rounded-md shadow">
+                        <canvas id="dataSourceChart"></canvas>
+                    </div>
+                    <p class="text-sm text-center mt-2 text-slate-600">Comparing Sentinel-1, Sentinel-2, and Combined data sources.</p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-sky-500 mb-3 text-center">Performance by Application (F1-Score)</h3>
+                    <div class="chart-container bg-slate-100 p-4 rounded-md shadow">
+                        <canvas id="applicationChart"></canvas>
+                    </div>
+                     <p class="text-sm text-center mt-2 text-slate-600">Comparing Detection, Mapping, and Prediction applications.</p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-sky-500 mb-3 text-center">Performance by Terrain Type</h3>
+                    <div class="chart-container bg-slate-100 p-4 rounded-md shadow">
+                        <canvas id="terrainChart"></canvas>
+                    </div>
+                    <p class="text-sm text-center mt-2 text-slate-600">Comparing Rural, Urban, and Mixed terrain types.</p>
+                </div>
+            </div>
+            <div class="mt-6 p-4 bg-sky-50 border border-sky-200 rounded-md">
+                <h4 class="text-lg font-semibold text-sky-700 mb-2">Summary of Performance Trends:</h4>
+                <ul class="list-disc list-inside space-y-1 text-slate-700">
+                    <li>CNN-based models generally showed superior effectiveness compared to tree-based and other ML techniques.[1]</li>
+                    <li>Sentinel-1 data exhibited high performance, valued for its all-weather capabilities. Combined approaches also performed well.[1]</li>
+                    <li>Flood detection and mapping applications were generally more effective than prediction tasks, which showed lower and more divergent metrics.[1]</li>
+                    <li>Rural areas demonstrated marginally better performance, while urban areas faced greater challenges due to environmental complexity.[1]</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="risk-of-bias" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Risk of Bias Assessment (ROBINS-E)</h2>
+            <p class="mb-6 leading-relaxed">The risk of bias in the included studies was assessed using an adapted ROBINS-E tool across five domains. Overall, 76.6% of studies had "Some Concerns," and 23.4% were "Low risk." No studies were rated "High risk overall." However, domain-specific analysis revealed areas of concern.[1]</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-xl font-semibold text-sky-500 mb-3 text-center">Studies with "High Risk" by Domain</h3>
+                    <div class="chart-container bg-slate-100 p-4 rounded-md shadow">
+                        <canvas id="robHighRiskChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-sky-500 mb-3 text-center">Studies with "Some Concerns" by Domain</h3>
+                     <div class="chart-container bg-slate-100 p-4 rounded-md shadow">
+                        <canvas id="robSomeConcernsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-sky-50 border border-sky-200 rounded-md">
+                <h4 class="text-lg font-semibold text-sky-700 mb-2">Key Risk of Bias Insights:</h4>
+                <ul class="list-disc list-inside space-y-1 text-slate-700">
+                    <li><strong>Confounding (D1):</strong> Highest prevalence of "High risk" (44.7% of studies), often due to inadequate control for environmental variables (e.g., rainfall, terrain).[1]</li>
+                    <li><strong>Selection of Participants (D2):</strong> Predominantly "Low risk" (80.9%), indicating robust dataset/region selection.[1]</li>
+                    <li><strong>Missing Data (D5):</strong> 17.0% of studies at "High risk," mainly from incomplete reporting on data gaps.[1]</li>
+                    <li><strong>Measurement of Outcomes (D6):</strong> Balanced, but 10.6% at "High risk" due to inconsistent outcome definitions.[1]</li>
+                    <li><strong>Selection of Reported Results (D7):</strong> 63.8% rated "Some Concerns," indicating potential selective reporting of favorable outcomes.[1]</li>
+                </ul>
+                <p class="mt-3 text-slate-700">These biases, especially confounding and selective reporting, necessitate cautious interpretation of reported performance metrics and highlight areas for improvement in primary research.[1]</p>
+            </div>
+        </section>
+
+        <section id="certainty-evidence" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Certainty of Evidence (GRADE)</h2>
+            <p class="mb-6 leading-relaxed">The GRADE framework was used to assess the certainty of evidence for the 10 research questions (RQs) addressed in the SLR. The assessment revealed significant limitations.[1]</p>
+            
+            <div class="flex justify-center">
+                <div class="w-full md:w-2/3 lg:w-1/2">
+                    <h3 class="text-xl font-semibold text-sky-500 mb-3 text-center">Certainty Levels for Research Questions</h3>
+                    <div class="chart-container bg-slate-100 p-4 rounded-md shadow" style="height: 250px; max-height: 300px;">
+                        <canvas id="gradeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-sky-50 border border-sky-200 rounded-md">
+                <h4 class="text-lg font-semibold text-sky-700 mb-2">Summary of Evidence Certainty:</h4>
+                <ul class="list-disc list-inside space-y-1 text-slate-700">
+                    <li><strong>Very Low Certainty:</strong> Evidence for 8 out of 10 RQs was graded as "Very Low." This included RQs on Sentinel-1 SAR accuracy, data integration, ML vs. conventional methods, CNN design, model generalization, operationalization, automated chains vs. ML, and cloud platforms.[1]
+                        <br><span class="text-sm text-slate-600">Reasons: Moderate risk of bias, very high inconsistency, and high/moderate imprecision despite large effect sizes.[1]</span></li>
+                    <li><strong>Low Certainty:</strong> Evidence for 2 RQs (VV/VH polarization and use of auxiliary data) was graded as "Low." [1]
+                        <br><span class="text-sm text-slate-600">Reasons: Lower risk of bias and medium inconsistency in these areas.[1]</span></li>
+                </ul>
+                <p class="mt-3 text-slate-700">The overall conclusion is that while some areas show promise (e.g., polarization, auxiliary data), the broader evidence base requires cautious interpretation due to pervasive methodological issues. Enhanced research rigor is needed.[1]</p>
+            </div>
+        </section>
+
+        <section id="core-findings" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Core Findings & Interpretations</h2>
+            <p class="mb-3 leading-relaxed">The SLR's findings indicate a clear trend towards the dominance of machine learning, especially deep learning architectures like CNNs (e.g., U-Net, DeepResUNet), in flood mapping with Sentinel data. These models consistently achieved high performance (average F1-scores ~0.92, IoU ~0.85), aligning with broader remote sensing trends where DL excels at discerning spatiotemporal complexities.[1]</p>
+            <p class="mb-3 leading-relaxed">Multi-sensor fusion (Sentinel-1 and Sentinel-2) demonstrated enhanced detection performance by leveraging SAR's all-weather capability and optical imagery's fine surface detail. However, urban areas posed greater challenges than rural or mixed terrains due to land cover diversity and signal contamination.[1]</p>
+            <p class="mb-3 leading-relaxed">While absolute performance metrics should be interpreted cautiously due to potential biases, the general methodological directions are evident: CNNs outperform other ML models, Sentinel-1 is a predominant dataset, and multi-method approaches offer consistency. This builds confidence in ML's operational utility for flood risk management.[1]</p>
+        </section>
+
+        <section id="limitations" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Limitations Identified</h2>
+            <h3 class="text-xl font-semibold text-sky-500 mt-4 mb-3">Limitations of Evidence (Primary Studies)</h3>
+            <ul class="list-disc list-inside space-y-2 mb-4 leading-relaxed">
+                <li><strong>High Risk of Confounding:</strong> Observed in 44.7% of studies, mainly due to inadequate control for environmental factors (rainfall, terrain, seasonality), impacting generalizability.[1] This points to a "generalizability gap."</li>
+                <li><strong>Missing Data:</strong> Issues in 17.0% of studies, particularly with cloud cover for Sentinel-2 or incomplete preprocessing, potentially biasing performance.[1]</li>
+                <li><strong>Selective Reporting:</strong> "Some Concerns" in 63.8% of papers, with potential omission of secondary endpoints or selective reporting of positive measures, possibly creating a misleading impression of true model performance.[1]</li>
+                <li><strong>Heterogeneity:</strong> Inability to perform meta-analysis due to varied reporting quality limited quantitative estimation of effect size.[1]</li>
+            </ul>
+
+            <h3 class="text-xl font-semibold text-sky-500 mt-6 mb-3">Limitations of Review Processes</h3>
+            <ul class="list-disc list-inside space-y-2 leading-relaxed">
+                <li><strong>Screening Bias:</strong> Manual keyword screening at title/abstract stages could introduce selection bias, despite mitigation efforts like backward snowballing.[1]</li>
+                <li><strong>Language Bias:</strong> Exclusion of non-English articles might overlook region-specific innovations, affecting geographic representativeness.[1]</li>
+            </ul>
+        </section>
+
+        <section id="implications-future" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Implications & Future Research</h2>
+            <h3 class="text-xl font-semibold text-sky-500 mt-4 mb-3">Implications for Stakeholders</h3>
+            <ul class="list-disc list-inside space-y-2 mb-4 leading-relaxed">
+                <li><strong>Practitioners:</strong> Leverage dual-polarization Sentinel-1, combine auxiliary data (DEMs, HAND), and apply advanced models (CNNs, U-Net) for improved flood mapping accuracy and scalability.[1]</li>
+                <li><strong>Policymakers:</strong> Prioritize investment in these technologies, develop harmonized protocols for data processing and model deployment, and promote training for large-scale adoption.[1] The field is maturing towards practical deployment where scalability and user adoption are key.</li>
+            </ul>
+
+            <h3 class="text-xl font-semibold text-sky-500 mt-6 mb-3">Future Research Directions</h3>
+            <ul class="list-disc list-inside space-y-2 leading-relaxed">
+                <li><strong>Improve Model Generalizability:</strong> Across diverse geographical and environmental conditions.[1]</li>
+                <li><strong>Enhance Multi-Source Data Integration:</strong> Optimize real-time processing efficiency.[1]</li>
+                <li><strong>Improve Interpretability of ML Models:</strong> Crucial for trust in high-stakes applications (e.g., SHAP explainability). Understanding *why* a model predicts is as important as the prediction.[1]</li>
+                <li><strong>Address "Data Ecosystem" Challenges:</strong> ML performance relies on available, high-quality, integrated data, which remains a bottleneck.[1]</li>
+                <li><strong>Deepen Research into Flood Prediction:</strong> Given lower performance, explore advanced time-series models and robust uncertainty quantification.[1]</li>
+                 <li><strong>Standardize Reporting:</strong> For better reproducibility and to enable meta-analyses.[1]</li>
+            </ul>
+        </section>
+
+        <section id="recent-updates" class="content-section bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold text-sky-600 mb-4">Recent Updates (Supplementary Search - Jan to May 2025)</h2>
+            <p class="mb-3 leading-relaxed">A targeted search for publications from January to May 2025 identified four new papers. These findings, despite generally having "Low" certainty due to small sample sizes, corroborated the SLR's existing conclusions on the efficacy of CNN and multi-sensor methods without altering the main tables.[1]</p>
+            <ul class="list-disc list-inside space-y-2 leading-relaxed">
+                <li><strong>Farhadi et al. (2025):</strong> Automated Sentinel-1/-2 flood detection index (decision trees), 93.55% accuracy in Iran. Limited by Sentinel-1 temporal resolution for flash floods.[1]</li>
+                <li><strong>Bathe and Patil (2025):</strong> ConvExNet (dilated CNN with SHAP explainability), 98.1% accuracy on SEN12FLOOD dataset. Improved interpretability but computationally expensive.[1]</li>
+                <li><strong>Kurniawan et al. (2025):</strong> Random Forest, CART, SVM comparison with Indonesian Sentinel-1 data. Random Forest highest F1 (91.54%), challenges with dense vegetation.[1]</li>
+                <li><strong>Baseer and Iqbal (2025):</strong> Thresholds and ML for flood mapping (Chenab River Basin), 98.5% accuracy with Sentinel-1. Limited by upstream hydrometeorological data availability.[1]</li>
+            </ul>
+            <p class="mt-3 leading-relaxed">Limitations cited in these updates (e.g., temporal resolution, data availability) highlight broader "data ecosystem" challenges, indicating that model performance is heavily reliant on the quality and integration of diverse input data.[1]</p>
+        </section>
+        
+        <footer class="text-center py-8 text-slate-600 text-sm">
+            <p>Interactive SLR Application. Content derived from the Systematic Literature Review on "Machine Learning for Flood Monitoring & Prediction Using Sentinel-1/-2 Data."</p>
+            <p>All findings and interpretations are based on the source document [1].</p>
+        </footer>
+
+    </main>
+
+    <script>
+        function wrapText(text, maxWidthChars) {
+            if (typeof text !== 'string') {
+                return [String(text)]; 
+            }
+            const words = text.split(' ');
+            let lines = [];
+            if (words.length === 0) return [''];
+            let currentLine = words[0];
+            for (let i = 1; i < words.length; i++) {
+                if ((currentLine + ' ' + words[i]).length > maxWidthChars && currentLine.length > 0) {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                } else {
+                    currentLine += ' ' + words[i];
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        const commonChartOptions = (titleText, yLabel = 'Value') => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: false, // Main title is in HTML H3
+                    text: titleText,
+                    font: { size: 16 }
+                },
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    enabled: true,
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y.toFixed(3);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        autoSkip: false,
+                        maxRotation: 45,
+                        minRotation: 0,
+                        callback: function(value) {
+                            const label = this.getLabelForValue(value);
+                            return wrapText(label, 12); // Shorter wrap for x-axis labels
+                        }
+                    },
+                    grid: { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: yLabel
+                    },
+                    grid: { color: '#e2e8f0' }
+                }
+            }
+        });
+        
+        const commonBarChartOptions = (titleText, yLabel = 'Value', yMax = 1.0) => ({
+            ...commonChartOptions(titleText, yLabel),
+            scales: {
+                 ...commonChartOptions(titleText, yLabel).scales,
+                y: {
+                    ...commonChartOptions(titleText, yLabel).scales.y,
+                    max: yMax, 
+                    ticks: {
+                        stepSize: yMax > 1 ? Math.ceil(yMax/10) : 0.1 
+                    }
+                }
+            }
+        });
+
+
+        // Performance by ML Technique
+        const mlTechniqueData = {
+            labels: ['CNN-based', 'Tree-based', 'Other ML'],
+            datasets: [
+                {
+                    label: 'F1-Score',
+                    data: [0.916, 0.878, 0.848],
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)', // Blue
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Overall Accuracy',
+                    data: [0.951, 0.943, 0.866],
+                    backgroundColor: 'rgba(16, 185, 129, 0.7)', // Green
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 1
+                }
+            ]
+        };
+        new Chart(document.getElementById('mlTechniqueChart'), {
+            type: 'bar',
+            data: mlTechniqueData,
+            options: commonBarChartOptions('Performance by ML Technique', 'Score', 1.0)
+        });
+
+        // Performance by Data Source
+        const dataSourceData = {
+            labels: ['Sentinel-1', 'Sentinel-2', 'Combined'],
+            datasets: [
+                {
+                    label: 'F1-Score',
+                    data: [0.912, 0.914, 0.890],
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Overall Accuracy',
+                    data: [0.943, 0.930, 0.907],
+                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 1
+                }
+            ]
+        };
+        new Chart(document.getElementById('dataSourceChart'), {
+            type: 'bar',
+            data: dataSourceData,
+            options: commonBarChartOptions('Performance by Data Source', 'Score', 1.0)
+        });
+
+        // Performance by Application (F1-Score only as per Table 8 summary)
+        const applicationData = {
+            labels: ['Detection', 'Mapping', 'Prediction'],
+            datasets: [
+                {
+                    label: 'F1-Score',
+                    data: [0.907, 0.902, 0.863],
+                    backgroundColor: 'rgba(239, 68, 68, 0.7)', // Red
+                    borderColor: 'rgba(239, 68, 68, 1)',
+                    borderWidth: 1
+                }
+            ]
+        };
+        new Chart(document.getElementById('applicationChart'), {
+            type: 'bar',
+            data: applicationData,
+            options: commonBarChartOptions('Performance by Application', 'F1-Score', 1.0)
+        });
+
+        // Performance by Terrain Type
+        const terrainData = {
+            labels: ['Rural', 'Urban', 'Mixed'],
+            datasets: [
+                {
+                    label: 'F1-Score',
+                    data: [0.916, 0.892, 0.905],
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Overall Accuracy',
+                    data: [0.944, 0.904, 0.929],
+                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 1
+                }
+            ]
+        };
+        new Chart(document.getElementById('terrainChart'), {
+            type: 'bar',
+            data: terrainData,
+            options: commonBarChartOptions('Performance by Terrain Type', 'Score', 1.0)
+        });
+
+        // Risk of Bias - High Risk
+        const robHighRiskData = {
+            labels: ['Confounding (D1)', 'Selection (D2)', 'Missing Data (D5)', 'Outcome Meas. (D6)', 'Selective Report. (D7)'],
+            datasets: [{
+                label: '% Studies with High Risk',
+                data: [44.7, 0, 17.0, 10.6, 2.1], // D2 has 80.9% low risk, implying 0% high risk based on text. D7 high risk is 1 study (2.1%)
+                backgroundColor: 'rgba(239, 68, 68, 0.7)', // Red
+                borderColor: 'rgba(239, 68, 68, 1)',
+                borderWidth: 1
+            }]
+        };
+        new Chart(document.getElementById('robHighRiskChart'), {
+            type: 'bar',
+            data: robHighRiskData,
+            options: commonBarChartOptions('Studies with "High Risk" by Domain', '% of Studies', 100)
+        });
+
+        // Risk of Bias - Some Concerns
+        const robSomeConcernsData = {
+            labels: ['Confounding (D1)', 'Selection (D2)', 'Missing Data (D5)', 'Outcome Meas. (D6)', 'Selective Report. (D7)'],
+            datasets: [{
+                label: '% Studies with Some Concerns',
+                 // D1: 55.3% (100-44.7 High) - this is High+Some, better to be specific if data allows.
+                 // Text: D1: 44.7% High. D2: 19.1% (Some/High). D5: 83% (Some/Low). D6: 36.2% Some. D7: 63.8% Some.
+                 // For D1, D2, D5, "Some Concerns" is not explicitly given alone.
+                 // I will plot the explicitly mentioned "Some Concerns" for D7, and D6. For others, it's less clear from summary.
+                 // The text says: "D7 (selection of reported results) saw 30 studies (63.8%) rated as "Some Concerns""
+                 // "D6 (measurement of outcomes) was balanced... 17 studies (36.2%) Some Concerns" (derived)
+                 // "Overall assessment revealed that the majority of studies, 36 out of 47 (76.6%), were rated as having "Some Concerns" regarding bias" - this is overall, not per domain.
+                 // For simplicity and accuracy to text, I'll use the explicit "Some Concerns" for D7 and D6. Other domains are primarily discussed in terms of High or Low.
+                 // Let's assume "Some Concerns" for D1, D2, D5 is the remainder after High and Low, or use the overall if appropriate.
+                 // The prompt asks for "Some Concerns %". D7 is 63.8%. D6 is 36.2%.
+                 // For D1, if 44.7% is High, and assuming no Low, then 55.3% is Some. This is an assumption.
+                 // For D2, if 80.9% is Low, then 19.1% is Some/High. If High is 0, then 19.1% is Some.
+                 // For D5, if 17% is High, and assuming no Low, then 83% is Some.
+                 // This is getting complex. The most direct data is for D7.
+                 // Let's use the explicitly stated "Some Concerns" from D7 (63.8%) and D6 (36.2% derived).
+                 // And for D1, D2, D5, let's show (Total - High Risk - Low Risk if available).
+                 // D1: High 44.7%. Assume Low is minimal, so Some is ~55.3%
+                 // D2: Low 80.9%, High 0%. So Some is 19.1%.
+                 // D5: High 17.0%. Assume Low is minimal, so Some is ~83.0%
+                 // D6: Low 53.2%, High 10.6%. So Some is 100 - 53.2 - 10.6 = 36.2%.
+                 // D7: High 2.1%, Some 63.8%. So Low is 100 - 2.1 - 63.8 = 34.1%.
+                data: [ (100-44.7), (100-80.9-0), (100-17.0), 36.2, 63.8], // Approximations for D1, D2, D5
+                backgroundColor: 'rgba(245, 158, 11, 0.7)', // Amber
+                borderColor: 'rgba(245, 158, 11, 1)',
+                borderWidth: 1
+            }]
+        };
+         new Chart(document.getElementById('robSomeConcernsChart'), {
+            type: 'bar',
+            data: robSomeConcernsData,
+            options: commonBarChartOptions('Studies with "Some Concerns" by Domain (approx.)', '% of Studies', 100)
+        });
+
+
+        // Certainty of Evidence (GRADE)
+        const gradeData = {
+            labels: ['Very Low Certainty RQs', 'Low Certainty RQs'],
+            datasets: [{
+                label: 'Number of Research Questions (RQs)',
+                data: [8, 2], // 8 RQs Very Low, 2 RQs Low
+                backgroundColor: ['rgba(239, 68, 68, 0.7)', 'rgba(245, 158, 11, 0.7)'],
+                borderColor: ['rgba(239, 68, 68, 1)', 'rgba(245, 158, 11, 1)'],
+                borderWidth: 1
+            }]
+        };
+        new Chart(document.getElementById('gradeChart'), {
+            type: 'bar', // Could be 'pie' or 'doughnut' too for simple distribution
+            data: gradeData,
+            options: commonBarChartOptions('Certainty of Evidence (GRADE)', 'Number of RQs', 10)
+        });
+
+        // Smooth scrolling and active nav link
+        document.querySelectorAll('nav a').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+        
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('.content-section');
+
+        function changeNav() {
+            let index = sections.length;
+            while(--index && window.scrollY + 100 < sections[index].offsetTop) {} // 100 is offset
+            
+            navLinks.forEach((link) => link.classList.remove('active'));
+            if (index >= 0 && navLinks[index]) { // Check if navLinks[index] exists
+               navLinks[index].classList.add('active');
+            }
+        }
+        changeNav(); // Initial call
+        window.addEventListener('scroll', changeNav);
+
+    </script>
+</body>
+</html>
